@@ -5,7 +5,7 @@ const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
 const helmet = require('helmet');
 const morgan = require('morgan');
-const port = process.env.PORT || 8081;
+const port = 8081;
 
 const app = require('express')();
 const server = require('http').createServer(app);
@@ -75,7 +75,10 @@ app.use((error, req, res, next) => {
 mongoose.connect(
     dbConfig.url, dbConfig.options
 ).then(result => {
-    server.listen(port);
+    var server2 = server.listen(process.env.PORT || port, function(){
+        var port = server2.address().port;
+        console.log("Its working on port: ", port)
+    });
     //app.listen(8081, "0.0.0.0");
     //https.createServer(credentials, app).listen(443, "0.0.0.0");
     console.log("Listening on port ", port)
