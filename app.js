@@ -5,11 +5,11 @@ const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
 const helmet = require('helmet');
 const morgan = require('morgan');
+const port = process.env.PORT || 8081;
 
 const app = require('express')();
 const server = require('http').createServer(app);
 const io = require('socket.io')(server);
-const port = process.env.PORT || 8081;
 
 const dbConfig = require('./config/dbConfig');
 
@@ -75,7 +75,7 @@ app.use((error, req, res, next) => {
 mongoose.connect(
     dbConfig.url, dbConfig.options
 ).then(result => {
-    server.listen(port, "0.0.0.0");
+    server.listen(port);
     //app.listen(8081, "0.0.0.0");
     //https.createServer(credentials, app).listen(443, "0.0.0.0");
     console.log("Listening on port ", port)
