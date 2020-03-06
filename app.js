@@ -1,33 +1,30 @@
 const path = require('path');
 const dotenv = require('dotenv').config();
-//const express = require('express');
 const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
 const helmet = require('helmet');
 const morgan = require('morgan');
-const port = 8081;
-
 const app = require('express')();
 const server = require('http').createServer(app);
-const io = require('socket.io')(server);
+const compression = require('compression');
+const fs = require('fs');
+const multer = require('multer');
+const upload = multer();
+const PORT = process.env.PORT || 8081;
+const swaggerUi = require('swagger-ui-express');
+const swaggerDocument = require('./swagger.json');
+
 
 const dbConfig = require('./config/dbConfig');
-
 const hydrantRoutes = require('./routes/hydrant');
 const authRoutes = require('./routes/authentication');
 
-//const app = express();
-var fs = require('fs')
-var https = require('https')
-const multer = require('multer');
-const upload = multer();
-//var privateKey = fs.readFileSync('localhost.key', 'utf8');
-//var certificate = fs.readFileSync('localhost.cert', 'utf8');
 
-//var credentials = { key: privateKey, cert: certificate };
+
 
 const accessLogStream = fs.createWriteStream(path.join(__dirname, 'access.log'), {flags: 'a'});
 
+app.use(compression());
 app.use(helmet());
 app.use(bodyParser.json());
 app.use(upload.none());
@@ -40,28 +37,11 @@ app.use((req, res, next) => {
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     next();
 });
-
+app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 app.use('/hydrant', hydrantRoutes);
 app.use('/auth', authRoutes);
 
-const isHydrantNearbyUtility = require('./utils/isHydrantNearby').isHydrantNearby;
 
-
-io.on("connection", socket => {
-    let isNearby;
-    socket.on("isHydrantNearby", async (userCoords) => {
-        isNearby = await isHydrantNearbyUtility(userCoords);
-        if(!userCoords.latitude || !userCoords.longitude){
-            isNearby = true;
-        }
-        // console.log(userCoords)
-        // console.log(isNearby)
-        socket.emit('isNearby', isNearby);
-
-    })
-    io.emit('isNearby', isNearby);
-
-})
 
 
 app.use((error, req, res, next) => {
@@ -75,12 +55,8 @@ app.use((error, req, res, next) => {
 mongoose.connect(
     dbConfig.url, dbConfig.options
 ).then(result => {
-    var server2 = server.listen(process.env.PORT || port, function(){
-        var port = server2.address().port;
-        console.log("Its working on port: ", port)
-    });
-    //app.listen(8081, "0.0.0.0");
-    //https.createServer(credentials, app).listen(443, "0.0.0.0");
-    console.log("Listening on port ", port)
+    server.listen(PORT, () => {
+        console.log("Listening on port ", PORT);
+    })
 }).catch(err => console.log(err));
 

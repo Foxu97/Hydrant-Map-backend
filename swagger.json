@@ -1,0 +1,129 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "version": "0.0.1",
+    "title": "HydrantMApp backend",
+    "description": "HydrantMApp api",
+    "license": {
+      "name": "MIT"
+    }
+  },
+  "tags": [
+    {
+    "name": "hydrant",
+    "description": "All about hydrants"
+    }
+  ],
+  "paths": {
+    "/hydrant": {
+      "get": {
+        "tags": [
+          "hydrant"
+        ],
+        "summary": "Get all hydrants in given range",
+        "description": "Returns array of hydrants in given range.",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "latitude",
+            "type": "number",
+            "description": "User's latitude",
+            "required": true,
+            "default": 50.143342
+          },
+          {
+            "in": "query",
+            "name": "longitude",
+            "type": "number",
+            "description": "User's longitude",
+            "required": true,
+            "default": 18.775472
+          },
+          {
+            "in": "query",
+            "name": "range",
+            "type": "integer",
+            "description": "Range in meters",
+            "required": false,
+            "default": 1000
+          }
+        ],
+        "responses": {
+          "200": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "latitude": {
+                  "type": "number",
+                  "format": "float"
+                },
+                "longitude": {
+                  "type": "number",
+                  "format": "float"
+                },
+                "address": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid query parameters"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "hydrant"
+        ],
+        "summary": "Add new hydrant",
+        "description": "Add new hydrant.",
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "type": "number",
+            "description": "Hydrant's longitude and latitude",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/HydrantPosition"
+            }
+          }
+        ]
+      }
+    },
+    "/hydrant/{hydrantId}": {
+      "get":{
+        "tags": [
+          "hydrant"
+        ],
+        "summary": "Get hydrant by id",
+        "description": "Get hydrant by id",
+        "parameters": [
+          {
+            "in":"path",
+            "name": "hydrantId",
+            "type": "string",
+            "description": "Hydrant's id",
+            "required": true
+          }
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "HydrantPosition": {
+      "type": "object",
+      "properties": {
+        "latitude": {
+          "type": "number",
+          "format": "float"
+        },
+        "longitude": {
+          "type": "number",
+          "format": "float"
+        }
+      }
+    }
+  }
+}
