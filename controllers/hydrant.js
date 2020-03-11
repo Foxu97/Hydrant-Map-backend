@@ -91,10 +91,22 @@ exports.addHydrant = async (req, res, next) => {
       res.status(400).json({ message: "There is hydrant nearby!!!" });
     }
   } catch (err) {
-    console.log(err)
     res.status(500).json({ message: "Something went wrong :(" });
   }
 };
+
+exports.getAddress = async (req, res, next) => {
+  if (!(parseFloat(req.query.latitude)) || !parseFloat(req.query.longitude)) {
+    return res.status(400).json({ message: "Invalid parameters: latitude or longitude" });
+  }
+  try {
+    const address = await setAddress(req.query.latitude, req.query.longitude);
+    res.status(200).json({message: "Address fetched", data: address.Label})
+
+  } catch (err) {
+    res.status(500).json({ message: "Something went wrong :(" });
+  }
+}
 
 
 

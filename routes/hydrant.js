@@ -7,7 +7,8 @@ const hydrantController = require('../controllers/hydrant');
 const router = express.Router();
 
 router.get('/', hydrantController.getAllHydrantsInRadius);
-router.get('/:hydrantId', checkAuth, hydrantController.getHydrantById);
+router.get('/getAddress', hydrantController.getAddress);
+router.get('/:hydrantId', hydrantController.getHydrantById);
 
 
 router.post('/', validation.hydrantCoordsValidation, hydrantController.addHydrant);
