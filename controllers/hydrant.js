@@ -32,7 +32,7 @@ exports.getAllHydrantsInRadius = async (req, res, next) => {
   }
   const userLatitude = parseFloat(req.query.latitude);
   const userLongitude = parseFloat(req.query.longitude);
-  let rangeInMeters = 1000;
+  let rangeInMeters = 0;
   if (!!parseInt(req.query.range)) {
     rangeInMeters = parseInt(req.query.range);
   }
@@ -41,6 +41,9 @@ exports.getAllHydrantsInRadius = async (req, res, next) => {
   }
   try {
     const allHydrants = await Hydrant.find();
+    if (rangeInMeters === 0) {
+      return allHydrants.length === 0 ? res.status(404).json({ message: "No hydrants in db", rangeInMeters: rangeInMeters, data: null }) : res.status(200).json({ message: "Hydrants fetched successfull", rangeInMeters: rangeInMeters, data: allHydrants });
+    }
     const hydrantsInRadius = allHydrants.filter(isInRadius);
     return hydrantsInRadius.length === 0 ? res.status(404).json({ message: "No hydrants in given range", rangeInMeters: rangeInMeters, data: null }) : res.status(200).json({ message: "Hydrants fetched successfull", rangeInMeters: rangeInMeters, data: hydrantsInRadius });
   } catch (err) {
