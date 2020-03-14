@@ -2,7 +2,7 @@ const Hydrant = require("../models/hydrant");
 const { checkIsHydrantNearby } = require('../utils/checkIsHydrantNearby');
 const { getDistance } = require('../utils/getDistance');
 const { setAddress } = require('../utils/setAddress');
-
+const fs = require('fs');
 
 exports.getHydrantById = async (req, res, next) => {
   const hydrantId = req.params.hydrantId;
@@ -13,7 +13,7 @@ exports.getHydrantById = async (req, res, next) => {
     res.status(200).json({ message: "Hydrant fetched sucessfully", data: fetchedHydrant });
   } catch (err) {
     console.log(err);
-    res.status(500).json({ message: "Something went wrong :("});
+    res.status(500).json({ message: "Something went wrong :(" });
   }
 
 };
@@ -71,29 +71,82 @@ exports.verify = (req, res, next) => {
 
 
 exports.addHydrant = async (req, res, next) => {
-  if (!(parseFloat(req.body.latitude)) || !parseFloat(req.body.longitude)) {
-    return res.status(400).json({ message: "Invalid parameters: latitude or longitude" });
+  const latLongValid = parseFloat(req.query.latitude) && parseFloat(req.query.longitude);
+  if (!latLongValid) {
+    return res.status(400).json({ message: "Invalid parameters: latitude, longitude." });
   }
-  const hydrantToAddLatitude = parseFloat(req.body.latitude);
-  const hydrantToAddLongitude = parseFloat(req.body.longitude);
+  const image = req.file;
   try {
-    const isNearby = await checkIsHydrantNearby({ latitude: hydrantToAddLatitude, longitude: hydrantToAddLongitude });
+    const isNearby = await checkIsHydrantNearby({ latitude: req.query.latitude, longitude: req.query.longitude });
     if (!isNearby) {
-      const address = await setAddress(hydrantToAddLatitude, hydrantToAddLongitude);
+      const address = await setAddress(req.query.latitude, req.query.longitude);
+      let dest = null;
+      if (image) {
+        const src = image.path;
+        dest = "hydrantsImages/" + image.filename;
+        fs.copyFile(src, dest, (err) => {
+          if (err) throw err;
+          const fileToRemove = "tempImages/" + image.filename
+          fs.unlink(fileToRemove, (err) => {
+            if (err) throw err;
+          });
+        });
+      }
       const hydrant = new Hydrant({
-        longitude: hydrantToAddLongitude,
-        latitude: hydrantToAddLatitude,
-        address: address
+        longitude: req.query.longitude,
+        latitude: req.query.latitude,
+        address: address,
+        imagePath: dest
       });
       const addedHydrant = await hydrant.save();
-      res.status(201).json({ message: "Hydrant added sucessfully", hydrant: addedHydrant });
-    } else {
-      res.status(400).json({ message: "There is hydrant nearby!!!" });
+      console.log("Hydrant added sucessfully")
+      return res.status(201).json({ message: "Hydrant added sucessfully", data: addedHydrant });
     }
+    const fileToRemove = "tempImages/" + image.filename // need to create function
+    fs.unlink(fileToRemove, (err) => {
+      if (err) throw err;
+    });
+    console.log("There is hydrant nearby!!!")
+    return res.status(400).json({ message: "There is hydrant nearby!!!" });
   } catch (err) {
-    res.status(500).json({ message: "Something went wrong :(" });
+    console.log("Something went wrong! :(")
+    res.status(500).json({ message: "Something went wrong! :(" });
   }
-};
+}
+
+exports.updateHydrantPhoto = async (req, res, next) => {
+  if (!req.query.id || !req.file) {  
+    console.log("Invalid data!")
+    return res.status(400).json({ message: "Invalid data!" });
+  }
+  try {
+    const fetchedHydrant = await Hydrant.findById(req.query.id);
+    if (!fetchedHydrant) {
+      console.log("No hydrant fetched :(")
+      return res.status(400).json({ message: "No hydrant fetched" });
+    }
+    const src = req.file.path;
+    let dest = "hydrantsImages/" + req.file.filename;
+    fs.copyFile(src, dest, (err) => {
+      if (err) throw err;
+      const fileToRemove = "tempImages/" + req.file.filename
+      fs.unlink(fileToRemove, (err) => {
+        if (err) throw err;
+      });
+    });
+    fetchedHydrant.imagePath = dest;
+    const updatedHydrant = await fetchedHydrant.save();
+    console.log("Hydrant updated!")
+    res.status(201).json({message: "Hydrant updated!", data: updatedHydrant})
+    
+  } catch (err) {
+    console.log(err)
+    console.log("Something went wrong! :(")
+    res.status(500).json({ message: "Something went wrong! :(" });
+  }
+}
+
+
 
 exports.getAddress = async (req, res, next) => {
   if (!(parseFloat(req.query.latitude)) || !parseFloat(req.query.longitude)) {
@@ -101,7 +154,7 @@ exports.getAddress = async (req, res, next) => {
   }
   try {
     const address = await setAddress(req.query.latitude, req.query.longitude);
-    res.status(200).json({message: "Address fetched", data: address.Label})
+    res.status(200).json({ message: "Address fetched", data: address.Label });
 
   } catch (err) {
     res.status(500).json({ message: "Something went wrong :(" });

@@ -10,6 +10,7 @@ router.get('/', hydrantController.getAllHydrantsInRadius);
 router.get('/getAddress', hydrantController.getAddress);
 router.get('/:hydrantId', hydrantController.getHydrantById);
 
+router.put('/', hydrantController.updateHydrantPhoto);
 
 router.post('/', validation.hydrantCoordsValidation, hydrantController.addHydrant);
 

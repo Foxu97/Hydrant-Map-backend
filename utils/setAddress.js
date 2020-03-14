@@ -9,10 +9,10 @@ exports.setAddress = async (lat, long) => {
   try {
     const response = await fetch(searchUrl);
     const json = await response.json();
-    console.log("address:", json.Response.View[0].Result[0].Location.Address);
-    return json.Response.View[0].Result[0].Location.Address;
+    if (json.Response.View[0].Result[0].Location.Address) return json.Response.View[0].Result[0].Location.Address;
+    return "UNKNOWN ADDRESS";
   } catch (err) {
-    console.log(err)
+    return "UNKNOWN ADDRESS";
   }
 
 }
