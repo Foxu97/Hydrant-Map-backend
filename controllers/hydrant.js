@@ -21,12 +21,13 @@ exports.getHydrantById = async (req, res, next) => {
 exports.getAllHydrants = async (req, res, next) => {
   const hydrants = await Hydrant.find();
   if (!hydrants) {
-    res.status(404).json({ message: "No hydrants in db" })
+    res.status(404).json({ message: "No hydrants in db", data: [] })
   }
   res.status(200).json(hydrants);
 }
 
 exports.getAllHydrantsInRadius = async (req, res, next) => {
+  console.log(req.query)
   if (!(parseFloat(req.query.latitude)) || !parseFloat(req.query.longitude)) {
     return res.status(400).json({ message: "Invalid parameters: latitude or longitude" });
   }
@@ -42,10 +43,10 @@ exports.getAllHydrantsInRadius = async (req, res, next) => {
   try {
     const allHydrants = await Hydrant.find();
     if (rangeInMeters === 0) {
-      return allHydrants.length === 0 ? res.status(404).json({ message: "No hydrants in db", rangeInMeters: rangeInMeters, data: null }) : res.status(200).json({ message: "Hydrants fetched successfull", rangeInMeters: rangeInMeters, data: allHydrants });
+      return allHydrants.length === 0 ? res.status(404).json({ message: "No hydrants in db", rangeInMeters: rangeInMeters, data: [] }) : res.status(200).json({ message: "Hydrants fetched successfull", rangeInMeters: rangeInMeters, data: allHydrants });
     }
     const hydrantsInRadius = allHydrants.filter(isInRadius);
-    return hydrantsInRadius.length === 0 ? res.status(404).json({ message: "No hydrants in given range", rangeInMeters: rangeInMeters, data: null }) : res.status(200).json({ message: "Hydrants fetched successfull", rangeInMeters: rangeInMeters, data: hydrantsInRadius });
+    return hydrantsInRadius.length === 0 ? res.status(404).json({ message: "No hydrants in given range", rangeInMeters: rangeInMeters, data: [] }) : res.status(200).json({ message: "Hydrants fetched successfull", rangeInMeters: rangeInMeters, data: hydrantsInRadius });
   } catch (err) {
     res.status(500).json({ message: "Something went wrong :(" })
   }
@@ -71,9 +72,10 @@ exports.verify = (req, res, next) => {
 
 
 exports.addHydrant = async (req, res, next) => {
+  console.log(req.query)
   const latLongValid = parseFloat(req.query.latitude) && parseFloat(req.query.longitude);
   if (!latLongValid) {
-    return res.status(400).json({ message: "Invalid parameters: latitude, longitude." });
+    return res.status(400).json({ message: "Invalid parameters: latitude or longitude." });
   }
   const image = req.file;
   try {
@@ -102,13 +104,17 @@ exports.addHydrant = async (req, res, next) => {
       console.log("Hydrant added sucessfully")
       return res.status(201).json({ message: "Hydrant added sucessfully", data: addedHydrant });
     }
-    const fileToRemove = "tempImages/" + image.filename // need to create function
-    fs.unlink(fileToRemove, (err) => {
-      if (err) throw err;
-    });
+    if(image){
+      const fileToRemove = "tempImages/" + image.filename // need to create function
+      fs.unlink(fileToRemove, (err) => {
+        if (err) throw err;
+      });
+    }
+
     console.log("There is hydrant nearby!!!")
     return res.status(400).json({ message: "There is hydrant nearby!!!" });
   } catch (err) {
+    console.log(err)
     console.log("Something went wrong! :(")
     res.status(500).json({ message: "Something went wrong! :(" });
   }

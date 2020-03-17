@@ -58,12 +58,14 @@ const fileFilter = (req, file, cb) => {
 };
 
 app.use(bodyParser.json());
-app.use(
-   multer({ storage: fileStorage, fileFilter: fileFilter }).single('image')
-);
+// app.use(
+//    multer({ storage: fileStorage, fileFilter: fileFilter }).single('image')
+// );
+// const { exifHydrantUploader } = require('./controllers/exif');
 //app.use('/images', express.static(path.join(__dirname, 'images')));
 
 app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+app.use(multer({ storage: fileStorage, fileFilter: fileFilter }).array('image'));
 app.use('/hydrant', hydrantRoutes);
 app.use('/auth', authRoutes);
 
