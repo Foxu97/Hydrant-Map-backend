@@ -18,6 +18,12 @@ const dbConfig = require('./config/dbConfig');
 const hydrantRoutes = require('./routes/hydrant');
 const authRoutes = require('./routes/authentication');
 const accessLogStream = fs.createWriteStream(path.join(__dirname, 'access.log'), { flags: 'a' });
+// const compress = require('./utils/compressImages').compressImages;
+const { createDirectories } = require('./utils/createDirectories');
+const { imageUploader } = require('./middleware/imageUploader');
+
+createDirectories();
+
 
 app.use(compression());
 app.use(helmet());
@@ -32,9 +38,17 @@ app.use((req, res, next) => {
 });
 
 
+const DIRECTORIES = require('./constants/directory');
+
 const fileStorage = multer.diskStorage({
     destination: (req, file, cb) => {
-        cb(null, 'tempImages');
+        let date = new Date().toISOString();
+        while (date.includes(":")) {
+            date = date.replace(":", "-");
+        }
+        const tempDirectory = DIRECTORIES.tempImages + "/" + date;
+        fs.mkdirSync(tempDirectory);
+        cb(null, tempDirectory);
     },
     filename: (req, file, cb) => {
         let fileName = new Date().toISOString() + file.originalname;
@@ -58,14 +72,12 @@ const fileFilter = (req, file, cb) => {
 };
 
 app.use(bodyParser.json());
-// app.use(
-//    multer({ storage: fileStorage, fileFilter: fileFilter }).single('image')
-// );
-// const { exifHydrantUploader } = require('./controllers/exif');
-//app.use('/images', express.static(path.join(__dirname, 'images')));
+
 
 app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
-app.use(multer({ storage: fileStorage, fileFilter: fileFilter }).array('image'));
+
+app.use(multer({ storage: fileStorage, fileFilter: fileFilter }).array('image')); // only auth user;
+
 app.use('/hydrant', hydrantRoutes);
 app.use('/auth', authRoutes);
 

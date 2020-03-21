@@ -3,6 +3,9 @@ const { checkIsHydrantNearby } = require('../utils/checkIsHydrantNearby');
 const { getDistance } = require('../utils/getDistance');
 const { setAddress } = require('../utils/setAddress');
 const fs = require('fs');
+const rimraf = require("rimraf");
+const compress = require('../utils/compressImages').compressImages;
+
 
 exports.getHydrantById = async (req, res, next) => {
   const hydrantId = req.params.hydrantId;
@@ -77,19 +80,21 @@ exports.addHydrant = async (req, res, next) => {
   if (!latLongValid) {
     return res.status(400).json({ message: "Invalid parameters: latitude or longitude." });
   }
-  const image = req.file;
+  let image;
+  if (req.files) {
+    image = req.files[0];
+  }
   try {
     const isNearby = await checkIsHydrantNearby({ latitude: req.query.latitude, longitude: req.query.longitude });
     if (!isNearby) {
       const address = await setAddress(req.query.latitude, req.query.longitude);
       let dest = null;
       if (image) {
-        const src = image.path;
         dest = "hydrantsImages/" + image.filename;
-        fs.copyFile(src, dest, (err) => {
-          if (err) throw err;
-          const fileToRemove = "tempImages/" + image.filename
-          fs.unlink(fileToRemove, (err) => {
+        let imageFolderPath = image.path.split("\\");
+        imageFolderPath = imageFolderPath[0] + "/" + imageFolderPath[1];
+        compress(imageFolderPath, () => {
+          rimraf(imageFolderPath, (err) => {
             if (err) throw err;
           });
         });

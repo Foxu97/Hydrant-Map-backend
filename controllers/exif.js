@@ -13,21 +13,37 @@ const ConvertDMSToDD = (degrees, minutes, seconds, direction) => {
 }
 
 const removeTempImage = (imageName) => {
-    const fileToRemove = "tempImages/" + imageName
-    fs.unlink(fileToRemove, (err) => {
-      if (err) throw err;
-    });
+    return new Promise((resolve, reject) => {
+        const fileToRemove = "tempImages/" + imageName
+        fs.unlink(fileToRemove, (err) => {
+          if (err) throw err; //reject ? 
+          resolve();
+        });
+    })
+}
+const moveImage = (image) => {
+    return new Promise((resolve, reject) => {
+        const src = image.path;
+        dest = "hydrantsImages/" + image.filename;
+        fs.copyFile(src, dest, (err) => {
+          if (err) throw err; // reject?
+          resolve();
+        });
+    })
+
 }
 const readImageCoords = async(image) => {
     return new Promise((resolve, reject) => {
-        new ExifImage({ image: image.path}, (err, exifData) => {
+        new ExifImage({ image: image.path}, async(err, exifData) => {
             if (err) { //no exifData
-                removeTempImage(image.filename)
-                console.log(err);
-                resolve(null); // maybe there is better way?
+                try {
+                    await removeTempImage(image.filename)
+                    resolve(null); // maybe there is better way?
+                } catch (err) {
+                    resolve(null);
+                }
             } else {
                 if (exifData.gps) {
-                    console.log(exifData.gps);
                     image.gps = exifData.gps;
                     const latitudeDegrees = exifData.gps.GPSLatitude[0];
                     const latitudeMinutes = exifData.gps.GPSLatitude[1];
@@ -56,9 +72,7 @@ const getCoordinatesFromImages = async(images) => {
         if (img !== null){
             imagesWithCoordinates.push(img);
         }
-    })
-    console.log(imagesWithCoordinates);
-    //it should return only images with coords;
+    });
     return {images: imagesWithCoordinates, info: {
         recived: images.length,
         returned: images.length - (images.length - imagesWithCoordinates.length)
@@ -68,24 +82,74 @@ const asyncForEach = async(array, callback) => {
     for (let index = 0; index < array.length; index++) {
       await callback(array[index], index, array);
     }
-  }
+}
+
+const deleteLocationDuplicates = async(images) => {
+    const duplicatesIndexes = [];
+
+    for (let i = 0; i < images.length; i++){
+        for (let j = 0; j < images.length; j++) {
+            if (i === j || duplicatesIndexes.includes(i)){ // compare the same image or already checked;
+                continue;
+            }
+            const p1 = {
+                latitude: images[i].latitude,
+                longitude: images[i].longitude,
+            }
+            const p2 = {
+                latitude: images[j].latitude,
+                longitude: images[j].longitude,
+            }
+            const distance = getDistance(p1, p2);
+            if (distance < 25) {
+                duplicatesIndexes.push(j);
+            } // minimal distance to nearest hydrant
+        }
+
+    }
+    console.log("Duplicates indexes: ", duplicatesIndexes);
+    duplicatesIndexes.forEach(duplicate => {
+        images[duplicate].isDuplicate = true;
+    });
+    const uniqImages = images.filter(image => {
+        return image.isDuplicate != true;
+    });
+    try {
+        await asyncForEach(images, async(image) => {
+            if (image.isDuplicate) {
+                await removeTempImage(image.filename);
+            }
+        })  
+    } catch (err) {
+        console.log(err);
+    }
+    console.log(uniqImages.length);
+    return uniqImages;
+}
 
 exports.exifHydrantUploader = async (req, res, next) => {
-    const images = req.files;
-
-    
+    const images = req.files; 
     if (images.length === 0) return res.status(400).json({message: "No images sent"});
-    
     try{
         const imagesWithData = await getCoordinatesFromImages(images);
-        console.log(imagesWithData);
+        const withoutLocationDuplicates = await deleteLocationDuplicates(imagesWithData.images);
+        console.log("Otrzymano: ", images.length)
+        console.log("Z lokalizacją: ", imagesWithData.info)
+        console.log("Bez duplikatów: ", withoutLocationDuplicates.length);
+        await asyncForEach(withoutLocationDuplicates, async(image) => {
+            await moveImage(image);
+        });
+        // await asyncForEach(images, async(image) => {
+        //     await removeTempImage(image.filename);
+        // });
+        //console.log(imagesWithData);
         // fetch all hydrants from db
         // check for each image if there is already hydrant nearby, 
         //if yes chcec 
         //if hasPhoto if has delete file
         //else add path and remove file to hydrantsImages
         // const allHydrantsInDB = await Hydrant.find();
-        res.status(200).json({message: "All hydrants fetched", data: imagesWithData});
+        res.status(200).json({message: "All hydrants fetched", data: withoutLocationDuplicates});
 
     } catch (err) {
         console.log(err);

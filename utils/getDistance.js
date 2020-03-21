@@ -1,4 +1,4 @@
-var toRadians = function (x) {
+const toRadians =  x => {
     return x * Math.PI / 180;
   };
   
