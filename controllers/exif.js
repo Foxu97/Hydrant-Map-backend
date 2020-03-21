@@ -2,6 +2,8 @@ const Hydrant = require("../models/hydrant");
 const { getDistance } = require('../utils/getDistance');
 const ExifImage = require('exif').ExifImage;
 const fs = require('fs');
+const rimraf = require("rimraf");
+const compress = require('../utils/compressImages').compressImages;
 
 const ConvertDMSToDD = (degrees, minutes, seconds, direction) => {
     var dd = degrees + minutes/60 + seconds/(60*60);
@@ -136,9 +138,10 @@ exports.exifHydrantUploader = async (req, res, next) => {
         console.log("Otrzymano: ", images.length)
         console.log("Z lokalizacją: ", imagesWithData.info)
         console.log("Bez duplikatów: ", withoutLocationDuplicates.length);
-        await asyncForEach(withoutLocationDuplicates, async(image) => {
-            await moveImage(image);
-        });
+        // await asyncForEach(withoutLocationDuplicates, async(image) => {
+        //     await moveImage(image);
+        // });
+        const allHydrantsFormDB = await Hydrant.find();
         // await asyncForEach(images, async(image) => {
         //     await removeTempImage(image.filename);
         // });
