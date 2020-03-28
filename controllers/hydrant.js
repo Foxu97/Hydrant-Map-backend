@@ -5,7 +5,7 @@ const { setAddress } = require('../utils/setAddress');
 const fs = require('fs');
 const rimraf = require("rimraf");
 const compress = require('../utils/compressImages').compressImages;
-
+const compressImage = require('../utils/compressImages').compressImage;
 
 exports.getHydrantById = async (req, res, next) => {
   const hydrantId = req.params.hydrantId;
@@ -88,30 +88,33 @@ exports.addHydrant = async (req, res, next) => {
     const isNearby = await checkIsHydrantNearby({ latitude: req.query.latitude, longitude: req.query.longitude });
     if (!isNearby) {
       const address = await setAddress(req.query.latitude, req.query.longitude);
-      let dest = null;
+      let compressedImagePath = null;
       if (image) {
-        dest = "hydrantsImages/" + image.filename;
-        let imageFolderPath = image.path.split("\\");
-        imageFolderPath = imageFolderPath[0] + "/" + imageFolderPath[1];
-        compress(imageFolderPath, () => {
-          rimraf(imageFolderPath, (err) => {
-            if (err) throw err;
-          });
-        });
+        // dest = "hydrantsImages/" + image.filename;
+        // let imageFolderPath = image.path.split("\\");
+        // imageFolderPath = imageFolderPath[0] + "/" + imageFolderPath[1];
+        // compress(imageFolderPath, () => {
+        //   rimraf(imageFolderPath, (err) => {
+        //     if (err) throw err;
+        //   });
+        // });
+        compressedImagePath = await compressImage(image.path);
       }
       const hydrant = new Hydrant({
         longitude: req.query.longitude,
         latitude: req.query.latitude,
         address: address,
-        imagePath: dest
+        imagePath: compressedImagePath
       });
       const addedHydrant = await hydrant.save();
       console.log("Hydrant added sucessfully")
       return res.status(201).json({ message: "Hydrant added sucessfully", data: addedHydrant });
     }
     if(image){
-      const fileToRemove = "tempImages/" + image.filename // need to create function
-      fs.unlink(fileToRemove, (err) => {
+      //const fileToRemove = "tempImages/" + image.filename // need to create function
+      let imageFolderPath = image.path.split("\\");
+      imageFolderPath = imageFolderPath[0] + "/" + imageFolderPath[1];
+      rimraf(imageFolderPath, (err) => {
         if (err) throw err;
       });
     }
