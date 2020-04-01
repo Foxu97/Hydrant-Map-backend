@@ -73,7 +73,7 @@ const fileFilter = (req, file, cb) => {
 
 app.use(bodyParser.json());
 
-
+app.use('/images', express.static('hydrantsImages'));
 app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 app.use(multer({ storage: fileStorage, fileFilter: fileFilter }).array('image')); // only auth user;
