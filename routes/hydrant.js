@@ -14,7 +14,8 @@ router.get('/:hydrantId', hydrantController.getHydrantById);
 router.put('/', hydrantController.updateHydrantPhoto);
 
 router.post('/', validation.hydrantCoordsValidation, hydrantController.addHydrant);
-router.post('/exif', exifController.exifHydrantUploader)
+router.post('/exif', exifController.exifHydrantUploader);
+router.post('/image', hydrantController.uploadImage);
 
 router.put('/verify', checkAuth, hydrantController.verify);
 module.exports = router;
