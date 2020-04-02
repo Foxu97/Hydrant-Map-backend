@@ -3,3 +3,4 @@ hydrantsImages
 tempImages
 access.log
 log
+.env
