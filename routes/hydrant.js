@@ -9,13 +9,15 @@ const router = express.Router();
 
 router.get('/', hydrantController.getAllHydrantsInRadius);
 router.get('/getAddress', hydrantController.getAddress);
+router.get('/nearest', hydrantController.getXNearestHydrants);
 router.get('/:hydrantId', hydrantController.getHydrantById);
 
-router.put('/', hydrantController.updateHydrantPhoto);
+
+//router.put('/', hydrantController.updateHydrantPhoto);
+router.put('/image', hydrantController.uploadImage);
 
 router.post('/', validation.hydrantCoordsValidation, hydrantController.addHydrant);
 router.post('/exif', exifController.exifHydrantUploader);
-router.post('/image', hydrantController.uploadImage);
 
 router.put('/verify', checkAuth, hydrantController.verify);
 module.exports = router;

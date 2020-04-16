@@ -2,7 +2,6 @@ const Hydrant = require("../models/hydrant");
 const { checkIsHydrantNearby } = require('../utils/checkIsHydrantNearby');
 const { getDistance } = require('../utils/getDistance');
 const { setAddress } = require('../utils/setAddress');
-const fs = require('fs');
 const rimraf = require("rimraf");
 const compressImage = require('../utils/compressImages').compressImage;
 
@@ -47,7 +46,7 @@ exports.getAllHydrantsInRadius = async (req, res, next) => {
       return allHydrants.length === 0 ? res.status(404).json({ message: "No hydrants in db", rangeInMeters: rangeInMeters, data: [] }) : res.status(200).json({ message: "Hydrants fetched successfull", rangeInMeters: rangeInMeters, data: allHydrants });
     }
     const hydrantsInRadius = allHydrants.filter(isInRadius);
-    return hydrantsInRadius.length === 0 ? res.status(404).json({ message: "No hydrants in given range", rangeInMeters: rangeInMeters, data: [] }) : res.status(200).json({ message: "Hydrants fetched successfull", rangeInMeters: rangeInMeters, data: hydrantsInRadius });
+    return hydrantsInRadius.length === 0 ? res.status(404).json({ message: "No hydrants in given range", rangeInMeters: rangeInMeters, data: [] }) : res.status(200).json({ message: "Hydrants fetched successfull", rangeInMeters: rangeInMeters, amountOfHydrantsInRange: hydrantsInRadius.length, data: hydrantsInRadius });
   } catch (err) {
     res.status(500).json({ message: "Something went wrong :(" })
   }
@@ -87,13 +86,14 @@ exports.addHydrant = async (req, res, next) => {
       const address = await setAddress(req.query.latitude, req.query.longitude);
       let compressedImagePath = null;
       if (image) {
-        compressedImagePath = await compressImage(image.path);
+         await compressImage(image.path);
+         compressedImagePath = image.filename;
       }
       const hydrant = new Hydrant({
         longitude: req.query.longitude,
         latitude: req.query.latitude,
         address: address,
-        imagePath: compressedImagePath
+        imageName: compressedImagePath 
       });
       const addedHydrant = await hydrant.save();
       return res.status(201).json({ message: "Hydrant added sucessfully", data: addedHydrant });
@@ -111,36 +111,6 @@ exports.addHydrant = async (req, res, next) => {
     res.status(500).json({ message: "Something went wrong! :(" });
   }
 }
-
-exports.updateHydrantPhoto = async (req, res, next) => {
-  if (!req.query.id || !req.file) {
-    return res.status(400).json({ message: "Invalid data!" });
-  }
-  try {
-    const fetchedHydrant = await Hydrant.findById(req.query.id);
-    if (!fetchedHydrant) {
-      return res.status(400).json({ message: "No hydrant fetched" });
-    }
-    const src = req.file.path;
-    let dest = "hydrantsImages/" + req.file.filename;
-    fs.copyFile(src, dest, (err) => {
-      if (err) throw err;
-      const fileToRemove = "tempImages/" + req.file.filename
-      fs.unlink(fileToRemove, (err) => {
-        if (err) throw err;
-      });
-    });
-    fetchedHydrant.imagePath = dest;
-    const updatedHydrant = await fetchedHydrant.save();
-    res.status(201).json({ message: "Hydrant updated!", data: updatedHydrant })
-
-  } catch (err) {
-    console.log(err)
-    res.status(500).json({ message: "Something went wrong! :(" });
-  }
-}
-
-
 
 exports.getAddress = async (req, res, next) => {
   if (!(parseFloat(req.query.latitude)) || !parseFloat(req.query.longitude)) {
@@ -161,6 +131,7 @@ exports.uploadImage = async (req, res, next) => {
     res.status(400).json({ message: "No image." });
   }
   const image = req.files[0];
+  console.log(image)
   if (
     !req.body.hydrantID ||
     !req.body.latitude ||
@@ -186,13 +157,60 @@ exports.uploadImage = async (req, res, next) => {
   if (distance > 25) {
     res.status(400).json({ message: "You have to be closer to hydrant if you want to update its image." });
   }
-  const compressedImagePath = await compressImage(image.path);
+  await compressImage(image.path);
 
-  fetchedHydrant.imagePath = compressedImagePath;
+  fetchedHydrant.imageName = image.filename;
   await fetchedHydrant.save();
   res.status(201).json({ message: "Hydrants image updated." });
 }
 
+exports.getXNearestHydrants = async (req, res, next) => {
+  if (!(parseFloat(req.query.latitude)) || !parseFloat(req.query.longitude) || !parseInt(req.query.amount)) {
+    return res.status(400).json({ message: "Invalid parameters: latitude, longitude, range or amount" });
+  }
+  const userLatitude = req.query.latitude;
+  const userLongitude = req.query.longitude;
+  const amount = req.query.amount;
+  let rangeInMeters = 0;
+  if (req.query.range) {
+    rangeInMeters = req.query.range
+  }
+  //req.query.range ? rangeInMeters = req.query.range : rangeInMeters = 0;
 
+  const allHydrants = await Hydrant.find();
 
+  const compare = (hydrantA, hydrantB) => {
+    let comparsion = 0;
+    if (hydrantA.distance > hydrantB.distance){
+      comparsion = 1;
+    } else if (hydrantA.distance < hydrantB.distance){
+      comparsion = -1
+    }
+    return comparsion;
+  }
 
+  const isInRadius = (hydrant) => {
+    const distance = getDistance({ latitude: hydrant.latitude, longitude: hydrant.longitude }, { latitude: userLatitude, longitude: userLongitude });
+    hydrant.distanceToHydrant = distance;
+    return distance <= rangeInMeters;
+  }
+  // kwestia wydajnosciowa
+  // zrobic poprawne zapytanie na baze które zwroci mi hydranty tylko z odpowiednimi lat, lng w zaleznosci od range
+  // nie sortowac calosci hydrantsInRadius a nastepnie obcinac w zaleznosci od amount tylko
+  // napisac metode ktora bierze hydrant z najmniejszym distance (nie branym w poprzedniej iteracji) i dodaje go do nowej tablicy az tablica ma length amount;
+  let hydrantsInRadius;
+  if (rangeInMeters === 0){
+    hydrantsInRadius = [...allHydrants];
+  } else {
+    hydrantsInRadius = allHydrants.filter(isInRadius);
+  }
+  hydrantsInRadius.forEach(hydrant => {
+    hydrant.distance = getDistance({ latitude: hydrant.latitude, longitude: hydrant.longitude }, { latitude: userLatitude, longitude: userLongitude }).toFixed(2);
+  }) //bezsensu ze musze wywolac getDistance drugi raz
+  hydrantsInRadius.sort(compare);
+  if (amount < hydrantsInRadius.length) {
+    hydrantsInRadius = hydrantsInRadius.slice(0, amount);
+  }
+  return res.status(200).json({data: hydrantsInRadius, amount: hydrantsInRadius.length});
+
+}

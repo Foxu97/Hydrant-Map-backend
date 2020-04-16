@@ -22,7 +22,8 @@
     "node-fetch": "^2.6.0",
     "nodemon": "^2.0.1",
     "rimraf": "^3.0.2",
-    "swagger-ui-express": "^4.1.2"
+    "swagger-ui-express": "^4.1.2",
+    "uuid": "^7.0.3"
   },
   "devDependencies": {
     "compress-images": "^1.6.0",

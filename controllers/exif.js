@@ -143,16 +143,16 @@ exports.exifHydrantUploader = async (req, res, next) => {
                     longitude: hydrant.longitude
                 }
                 const distanceInMeters = getDistance(p1, p2);
-                if (distanceInMeters < 25 && hydrant.imagePath === null) {
+                if (distanceInMeters < 25 && hydrant.imageName === null) {
                     hydrantExistsInThisLocation = true;
-                    const compressedImagePath = await compressImage(image.path);
-                    const updatedHydrant = await Hydrant.findByIdAndUpdate(hydrant._id, { imagePath: compressedImagePath });
+                    const updatedHydrant = await Hydrant.findByIdAndUpdate(hydrant._id, { imageName: image.filename });
+                    await compressImage(image.path);
                     if (updatedHydrant) {
                         stats.updatedImages++;
                     }
 
                     //it should return from j loop
-                } else if (distanceInMeters < 25 && hydrant.imagePath !== null) {
+                } else if (distanceInMeters < 25 && hydrant.imageName !== null) {
                     hydrantExistsInThisLocation = true;
                     removeFolder(image);
                     stats.alreadyExistsWithImage++;
@@ -160,15 +160,15 @@ exports.exifHydrantUploader = async (req, res, next) => {
                 }
             });
             if (!hydrantExistsInThisLocation) {
-                const compressedImagePath = await compressImage(image.path);
                 const address = await setAddress(image.latitude, image.longitude);
                 const newHydrant = new Hydrant({
                     longitude: image.longitude,
                     latitude: image.latitude,
                     address: address,
-                    imagePath: compressedImagePath
+                    imageName: image.filename
                 });
                 const createdHydrant = await newHydrant.save();
+                await compressImage(image.path);
                 if (createdHydrant) {
                     stats.added++
                 }

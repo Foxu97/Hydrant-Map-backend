@@ -12,7 +12,7 @@ const multer = require('multer');
 const PORT = process.env.PORT || 8081;
 const swaggerUi = require('swagger-ui-express');
 const swaggerDocument = require('./swagger.json');
-
+const uuid = require('uuid');
 
 const dbConfig = require('./config/dbConfig');
 const hydrantRoutes = require('./routes/hydrant');
@@ -51,10 +51,9 @@ const fileStorage = multer.diskStorage({
         cb(null, tempDirectory);
     },
     filename: (req, file, cb) => {
-        let fileName = new Date().toISOString() + file.originalname;
-        while(fileName.includes(":")){
-            fileName = fileName.replace(":", "-")
-        }
+        const fileExtension = file.mimetype.split("/")[1];
+        let fileName = uuid.v1()
+        fileName = fileName + `.${fileExtension}`
         cb(null, fileName);
     }
 });

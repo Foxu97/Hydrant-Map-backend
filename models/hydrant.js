@@ -25,12 +25,15 @@ const hydrantSchema = new Schema({
       type: Number,
       required: false
     },
-    imagePath: {
+    imageName: {
       type: String,
       required: false,
       default: null
     },
-
+    distance: {
+      type: Number,
+      required: false
+    },
     address:{
         type: Object,
         "Response": {
