@@ -113,8 +113,9 @@ const deleteLocationDuplicates = async (images) => {
 
 exports.exifHydrantUploader = async (req, res, next) => {
     const images = req.files;
+    console.log(images)
     if (images.length === 0) return res.status(400).json({ message: "No images sent" });
-    if (images.length > 10) return res.status(400).json({ message: "Too many images" });
+    if (images.length > 12) return res.status(400).json({ message: "Too many images" });
     const stats = {
         recived: images.length,
         added: 0,

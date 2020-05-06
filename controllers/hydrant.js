@@ -131,7 +131,6 @@ exports.uploadImage = async (req, res, next) => {
     res.status(400).json({ message: "No image." });
   }
   const image = req.files[0];
-  console.log(image)
   if (
     !req.body.hydrantID ||
     !req.body.latitude ||
