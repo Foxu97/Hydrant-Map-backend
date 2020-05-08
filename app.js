@@ -75,7 +75,7 @@ app.use(bodyParser.json());
 app.use('/images', express.static('hydrantsImages'));
 app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
-app.use(multer({ storage: fileStorage, fileFilter: fileFilter }).array('image')); // only auth user;
+app.use(multer({ storage: fileStorage, fileFilter: fileFilter, limits: { fieldSize: 25 * 1024 * 1024 } }).array('image')); // only auth user;
 
 app.use('/hydrant', hydrantRoutes);
 app.use('/auth', authRoutes);

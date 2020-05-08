@@ -1,10 +1,13 @@
 const Hydrant = require("../models/hydrant");
-const { getDistance } = require('../utils/getDistance');
-const { setAddress } = require('../utils/setAddress');
 const ExifImage = require('exif').ExifImage;
 const fs = require('fs');
 const rimraf = require("rimraf");
+const _ = require('lodash');
+
+const { getDistance } = require('../utils/getDistance');
+const { setAddress } = require('../utils/setAddress');
 const compressImage = require('../utils/compressImages').compressImage;
+const hydrantExifUploadStats = require('../models/hydrantExifUploadStats');
 
 const ConvertDMSToDD = (degrees, minutes, seconds, direction) => {
     var dd = degrees + minutes / 60 + seconds / (60 * 60);
@@ -26,10 +29,13 @@ const readImageCoords = async (image) => {
     return new Promise((resolve, reject) => {
         new ExifImage({ image: image.path }, async (err, exifData) => {
             if (err) { //no exifData
-                    removeFolder(image);
-                    resolve(null); // maybe there is better way?
+                removeFolder(image);
+                resolve(null); // maybe there is better way?
             } else {
-                if (exifData.gps) {
+                if (_.isEmpty(exifData.gps)) {
+                    resolve(null);
+                    return;
+                }
                     image.gps = exifData.gps;
                     const latitudeDegrees = exifData.gps.GPSLatitude[0];
                     const latitudeMinutes = exifData.gps.GPSLatitude[1];
@@ -43,10 +49,13 @@ const readImageCoords = async (image) => {
 
                     const imageLatitude = ConvertDMSToDD(latitudeDegrees, latitudeMinutes, latitudeSeconds, latitudeDirection);
                     const imageLongitude = ConvertDMSToDD(longitudeDegrees, longitudeMinutes, longitudeSeconds, longitudeDirection);
+                    if (isNaN(imageLatitude) || isNaN(imageLongitude)){
+                        resolve(null);
+                        return;
+                    }
                     image.latitude = imageLatitude;
                     image.longitude = imageLongitude;
                     resolve(image);
-                }
             }
         });
     })
@@ -95,7 +104,6 @@ const deleteLocationDuplicates = async (images) => {
         }
 
     }
-    console.log("Duplicates indexes: ", duplicatesIndexes);
     duplicatesIndexes.forEach(duplicate => {
         images[duplicate].isDuplicate = true;
     });
@@ -107,15 +115,26 @@ const deleteLocationDuplicates = async (images) => {
             removeFolder(image);
         }
     })
-    console.log(uniqImages.length);
     return uniqImages;
 }
 
 exports.exifHydrantUploader = async (req, res, next) => {
     const images = req.files;
-    console.log(images)
-    if (images.length === 0) return res.status(400).json({ message: "No images sent" });
+    if (!images || images.length === 0) return res.status(400).json({ message: "No images sent" });
     if (images.length > 12) return res.status(400).json({ message: "Too many images" });
+    const statsDetails = new Map();
+
+    const updateStatsDetails = (revicedImages, imagesArray, status) => {
+        revicedImages.forEach(image => {
+            const isImage = imagesArray.find((element) => {
+                return image.filename === element.filename
+            });
+            if (!isImage && !statsDetails.has(image.originalname)) {
+                statsDetails.set(image.originalname, status)
+            }
+        });
+    }
+
     const stats = {
         recived: images.length,
         added: 0,
@@ -125,10 +144,15 @@ exports.exifHydrantUploader = async (req, res, next) => {
     try {
         const imagesWithData = await getCoordinatesFromImages(images);
         stats.withLocation = imagesWithData.images.length;
+        updateStatsDetails(images, imagesWithData.images, hydrantExifUploadStats.NO_EXIF_DATA);
+
 
         const withoutLocationDuplicates = await deleteLocationDuplicates(imagesWithData.images);
         stats.locationDuplicates = (imagesWithData.images.length - withoutLocationDuplicates.length);
         stats.unique = withoutLocationDuplicates.length;
+
+        updateStatsDetails(images, withoutLocationDuplicates, hydrantExifUploadStats.DUPLICATE);
+
 
         const allHydrantsFormDB = await Hydrant.find();
 
@@ -149,12 +173,14 @@ exports.exifHydrantUploader = async (req, res, next) => {
                     const updatedHydrant = await Hydrant.findByIdAndUpdate(hydrant._id, { imageName: image.filename });
                     await compressImage(image.path);
                     if (updatedHydrant) {
+                        statsDetails.set(image.originalname, hydrantExifUploadStats.UPDATED_IMAGE)
                         stats.updatedImages++;
                     }
 
                     //it should return from j loop
                 } else if (distanceInMeters < 25 && hydrant.imageName !== null) {
                     hydrantExistsInThisLocation = true;
+                    statsDetails.set(image.originalname, hydrantExifUploadStats.ALREADY_EXIST_WITH_IMAGE)
                     removeFolder(image);
                     stats.alreadyExistsWithImage++;
                     //it should return from j loop
@@ -172,11 +198,11 @@ exports.exifHydrantUploader = async (req, res, next) => {
                 await compressImage(image.path);
                 if (createdHydrant) {
                     stats.added++
+                    statsDetails.set(image.originalname, hydrantExifUploadStats.ADDED)
                 }
             }
         });
-
-        res.status(200).json({ message: "Ok", data: stats });
+        res.status(200).json({ message: "Ok", data: stats, details: [...statsDetails] });
 
     } catch (err) {
         console.log(err);
