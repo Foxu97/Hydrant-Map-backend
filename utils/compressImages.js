@@ -21,7 +21,7 @@ const OUTPUT_path = 'hydrantsImages/';
 // }
 
 exports.compressImage = (imagePath) => {
-    let imageFolderPath = imagePath.split("\\");
+    let imageFolderPath = imagePath.split("\/");
     imageFolderPath = imageFolderPath[0] + "/" + imageFolderPath[1];
     imagePath = imageFolderPath + '/*.{jpg,JPG,jpeg,JPEG,png}';
     return new Promise((resolve,reject) => {

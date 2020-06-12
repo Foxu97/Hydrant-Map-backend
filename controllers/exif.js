@@ -19,7 +19,7 @@ const ConvertDMSToDD = (degrees, minutes, seconds, direction) => {
 }
 
 const removeFolder = (image) => {
-    let imageFolderPath = image.path.split("\\");
+    let imageFolderPath = image.path.split("\/");
     imageFolderPath = imageFolderPath[0] + "/" + imageFolderPath[1];
     rimraf(imageFolderPath, (err) => {
         if (err) throw err;

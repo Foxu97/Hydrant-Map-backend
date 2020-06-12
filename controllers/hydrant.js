@@ -99,7 +99,7 @@ exports.addHydrant = async (req, res, next) => {
       return res.status(201).json({ message: "Hydrant added sucessfully", data: addedHydrant });
     }
     if (image) {
-      let imageFolderPath = image.path.split("\\");
+      let imageFolderPath = image.path.split("\/");
       imageFolderPath = imageFolderPath[0] + "/" + imageFolderPath[1];
       rimraf(imageFolderPath, (err) => {
         if (err) throw err;
